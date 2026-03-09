@@ -261,29 +261,51 @@ class PlasmaPongEnv(gym.Env):
         
         Returns:
             A tuple containing:
-                - reward: The reward value (1, -1, or 0).
+                - reward: The reward value based on multiple factors.
                 - done: True if the game is over (display inactive), False otherwise.
         """
-        # Get current lives
+        # Get current game state
         bot_life = self.driver.execute_script("return pong.ai.life;")
         player_life = self.driver.execute_script("return pong.player.life;")
         display_active = self.driver.execute_script("return pong.display;")
-        # Reward:
-        # +1 for player (RL AI-agent) scoring,
-        # -1 for player conceding
+        
+        # Get ball and paddle positions
+        ball_x = self.driver.execute_script("return pong.ball.x;")
+        # player_x = self.driver.execute_script("return pong.player.x;")
+        canvas_width = self.driver.execute_script("return document.getElementById('canvas').width;")
+        
+        ball_touched_player = self.driver.execute_script("return pong.ball.last_touched_by === 'player';")
+        ball_touched_ai = self.driver.execute_script("return pong.ball.last_touched_by === 'ai';")
+        
         reward = 0
+        
+        # 1. Reward for scoring/conceding (±1)
         if bot_life < self.prev_bot_life:
-            reward = 1  # player (RL AI-agent) scored
+            reward += 1  # player scored
         elif player_life < self.prev_player_life:
-            reward = -1  # player (RL AI-agent) conceded
-
+            reward -= 1  # player conceded
+        
+        # 2. Reward based on ball proximity
+        # Negative if ball is closer to player, positive if closer to enemy
+        ball_position_ratio = ball_x / canvas_width  # 0 (player side) to 1 (enemy side)
+        proximity_reward = (ball_position_ratio - 0.5) * 0.01  # Scale to small value
+        reward += proximity_reward
+        
+        # 3. Positive reward when player touches the ball
+        if ball_touched_player:
+            reward += 0.1
+        
+        # 4. Penalty when ball touches opponent
+        if ball_touched_ai:
+            reward -= 0.05
+        
         # Update previous lives
         self.prev_bot_life = bot_life
         self.prev_player_life = player_life
-
-        # Done: When display turn inactive (i.e., game over)
+        
+        # Done: When display is inactive (game over)
         done = not display_active
-
+        
         return reward, done
 
     def render(
