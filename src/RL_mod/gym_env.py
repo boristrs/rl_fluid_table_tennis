@@ -154,9 +154,6 @@ class PlasmaPongEnv(gym.Env):
                 - truncated: False (not used).
                 - info: Additional information (empty dict).
         """
-        # Send action keys
-        keys_to_send = self.action_keys[action]
-        # print(f"Keys to send: {keys_to_send}")
             
         # Convert keycodes to key characters
         # keycode_to_char = {
@@ -165,13 +162,27 @@ class PlasmaPongEnv(gym.Env):
         #     68: Keys.RIGHT,   # D
         #     65: Keys.LEFT,    # A
         # }
+        # Map action indices to keycodes
+        action_map = {
+            0: 87,  # up (w)
+            1: 83,  # down (s)
+            2: 68,  # push (d)
+            3: 65,  # suck (a)
+        }
         keycode_to_char = {
             87: 'w',      # W
             83: 's',    # S
             68: 'd',   # D
             65: 'a',    # A
         }
-        
+            
+        # Send action keys
+        keys_to_send = []
+        for i, is_active in enumerate(action):
+            if is_active == 1:
+                keys_to_send.append(action_map[i])
+        # print(f"Keys to send: {keys_to_send}")
+    
         self.driver.find_element(value="canvas")
         # canvas.click()
         
