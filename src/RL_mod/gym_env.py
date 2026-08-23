@@ -166,12 +166,14 @@ class PlasmaPongEnv(gym.Env):
         # }
         # Map action indices to keycodes
         action_map = {
-            0: 87,  # up (w)
-            1: 83,  # down (s)
-            2: 68,  # push (d)
-            3: 65,  # suck (a)
+            0: 0,  # nothing placeholder value
+            1: 87,  # up (w)
+            2: 83,  # down (s)
+            3: 68,  # push (d)
+            4: 65,  # suck (a)
         }
         keycode_to_char = {
+            0: '',     # nothing
             87: 'w',      # W
             83: 's',    # S
             68: 'd',   # D
