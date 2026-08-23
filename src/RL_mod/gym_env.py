@@ -49,7 +49,9 @@ class PlasmaPongEnv(gym.Env):
         self.observation_space = spaces.Box(
             low=0, high=255, shape=(96, 96, 3), dtype=np.uint8
         )
-        self.action_space = spaces.MultiDiscrete([2, 2, 2, 2])  # up, down, push, suck
+        # self.action_space = spaces.MultiDiscrete([2, 2, 2, 2])  # up, down, push, suck
+        self.action_space = spaces.MultiDiscrete([3, 2, 2])
+
         # ?Key mappings (based on typical Pong controls: W=up, S=down, A=suck, D=push)
         self.action_keys = {
             0: [], # nothing
