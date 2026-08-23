@@ -50,10 +50,9 @@ class PlasmaPongEnv(gym.Env):
             low=0, high=255, shape=(96, 96, 3), dtype=np.uint8
         )
         self.action_space = spaces.MultiDiscrete([2, 2, 2, 2])  # up, down, push, suck
-
         # ?Key mappings (based on typical Pong controls: W=up, S=down, A=suck, D=push)
         self.action_keys = {
-            0: [],
+            0: [], # nothing
             1: [87],  # up
             2: [83],  # down
             3: [68],  # push plasma
@@ -85,7 +84,8 @@ class PlasmaPongEnv(gym.Env):
         
         # via HTTP
         # Start the local server from the src with python -m http.server 8000
-        self.html_path = "http://localhost:8000/index.html"
+        self.html_path = "http://127.0.0.1:8000/"
+        # self.html_path = "http://localhost:8000/index.html"
 
         # Previous lives for reward calculations
         self.prev_bot_life = 5
@@ -203,7 +203,7 @@ class PlasmaPongEnv(gym.Env):
             """)
                 
         # # Wait for frame to update (if 60 FPS, ~16ms per frame)
-        time.sleep(0.016)
+        time.sleep(0.08)
         
         # Release keys
         for keyCode in keys_to_send:
