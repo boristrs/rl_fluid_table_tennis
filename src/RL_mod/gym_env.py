@@ -101,6 +101,9 @@ class PlasmaPongEnv(gym.Env):
         # Collision counters for reward calculations
         self.player_collision_counter = 0
 
+        # Radius of the paddle for proximity reward calculation
+        self.r_paddle = self.driver.execute_script("return pong.player.height;") / 2
+        
         # Step counter to limit episode length
         self.step_counter = 0
         self.held_keycodes: set[int] = set()
@@ -344,12 +347,15 @@ class PlasmaPongEnv(gym.Env):
         # reward += proximity_reward
         # Isn't necessary as this way sucking the ball as a technique would be penalized
         # Let's use the y axis proximity instead.
+        # Where if the ball within the range of the paddle,
+        # the reward is positive,
+        # otherwise negative based on distance.
         distance = abs(ball_y - paddle_center_y)
-        reward -= 0.0001 * distance
+        reward += 0.0001 * (self.r_paddle - distance)
 
         # 3. Positive reward when player touches the ball
         if new_player_collision_counter > self.player_collision_counter:
-            reward += 0.1
+            reward += 0.05
             self.player_collision_counter = new_player_collision_counter  # Update counter
 
         # 4. No penalty when ball touches opponent
