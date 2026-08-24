@@ -35,23 +35,37 @@ class PlasmaPongEnv(gym.Env):
     def __init__(
         self,
         render_mode: str | None = None,
-        max_steps: int = 10000
+        max_steps: int = 10000,
+        observation_mode: str = "pixels"
     ) -> None:
         """Initialize the Plasma Pong environment.
 
         Args:
             render_mode: The rendering mode ("rgb_array" or "human"). Defaults to None.
             max_steps: Maximum steps per episode. Defaults to 10000.
+            observation_mode: Either "pixels" or "state". Defaults to "pixels".
         """
         super().__init__()
         self.render_mode = render_mode
         self.max_steps = max_steps
+        if observation_mode not in {"pixels", "state"}:
+            raise ValueError("observation_mode must be 'pixels' or 'state'")
+        self.observation_mode = observation_mode
         self.h, self.w, self.c = 96, 96, 3
 
-        # Observation space: 96x96x3 RGB pixels (downsampled from 96x96 canvas)
-        self.observation_space = spaces.Box(
-            low=0, high=255, shape=(96, 96, 3), dtype=np.uint8
-        )
+        if self.observation_mode == "state":
+            # [ball.x, ball.y, ball.vx, ball.vy, player.y, player.vy,
+            #  player.life, ai.life], normalized where appropriate.
+            self.observation_space = spaces.Box(
+                low=np.array([0, 0, -1, -1, 0, -1, 0, 0], dtype=np.float32),
+                high=np.array([1, 1, 1, 1, 1, 1, 5, 5], dtype=np.float32),
+                dtype=np.float32,
+            )
+        else:
+            # Observation space: 96x96x3 RGB pixels (downsampled from 96x96 canvas)
+            self.observation_space = spaces.Box(
+                low=0, high=255, shape=(96, 96, 3), dtype=np.uint8
+            )
         # self.action_space = spaces.MultiDiscrete([2, 2, 2, 2])  # up, down,
         # push, suck
         self.action_space = spaces.MultiDiscrete([3, 2, 2])
@@ -239,6 +253,9 @@ class PlasmaPongEnv(gym.Env):
         Returns:
             A numpy array of shape (96, 96, 3) representing the RGB image of the game canvas.
         """
+        if self.observation_mode == "state":
+            return self._get_state_obs()
+
         # Extract canvas via JS
         canvas_data_url = self.driver.execute_script(
             """
@@ -259,6 +276,25 @@ class PlasmaPongEnv(gym.Env):
         # interpolation=cv2.INTER_LINEAR
 
         return img_array
+
+    def _get_state_obs(self) -> np.ndarray:
+        """Read the compact game state used by the MLP diagnostic policy."""
+        state = self.driver.execute_script(
+            """
+            var canvas = document.getElementById('canvas');
+            return [
+                pong.ball.x / canvas.width,
+                pong.ball.y / canvas.height,
+                pong.ball.vx,
+                pong.ball.vy,
+                pong.player.y / canvas.height,
+                pong.player.vy,
+                pong.player.life,
+                pong.ai.life
+            ];
+            """
+        )
+        return np.asarray(state, dtype=np.float32)
 
     def _get_reward_done(
         self
@@ -300,7 +336,7 @@ class PlasmaPongEnv(gym.Env):
         # Isn't necessary as this way sucking the ball as a technique would be penalized
         # Let's use the y axis proximity instead.
         distance = abs(ball_y - paddle_center_y)
-        reward -= 0.001 * distance
+        reward -= 0.0001 * distance
 
         # 3. Positive reward when player touches the ball
         if new_player_collision_counter > self.player_collision_counter:

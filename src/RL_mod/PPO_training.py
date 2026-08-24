@@ -2,10 +2,13 @@
 
 from stable_baselines3 import PPO
 
-from gym_env import PlasmaPongEnv
+try:
+    from .gym_env import PlasmaPongEnv
+except ImportError:
+    from gym_env import PlasmaPongEnv
 
-env = PlasmaPongEnv(render_mode="human")
-model = PPO("CnnPolicy", env, verbose=1)
+env = PlasmaPongEnv(render_mode="human", observation_mode="state")
+model = PPO("MlpPolicy", env, verbose=1)
 model.learn(total_timesteps=10000)
 # model.save("ppo_plasma_pong")
 # Keeps the script alive until you press Enter
