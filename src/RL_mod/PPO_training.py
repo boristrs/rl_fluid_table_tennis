@@ -8,5 +8,6 @@ env = PlasmaPongEnv(render_mode="human")
 model = PPO("CnnPolicy", env, verbose=1)
 model.learn(total_timesteps=10000)
 # model.save("ppo_plasma_pong")
-input("Press Enter to close...")  # Keeps the script alive until you press Enter
+# Keeps the script alive until you press Enter
+input("Press Enter to close...")
 env.close()

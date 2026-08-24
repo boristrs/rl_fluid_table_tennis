@@ -106,7 +106,7 @@ function notify(){
 	if ( pong.player.life == 0 ){
 
 		not.innerHTML = ai_switch + " WINS!"
-		restart();
+		// restart();
 
 	}
 
@@ -114,7 +114,7 @@ function notify(){
 
 		not.innerHTML = player_switch + " WINS!"
 
-		restart();
+		// restart();
 
 	}
 
