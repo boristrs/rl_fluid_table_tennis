@@ -81,7 +81,6 @@ class PlasmaPongEnv(gym.Env):
 
         # Collision counters for reward calculations
         self.player_collision_counter = 0
-        self.ai_collision_counter = 0
         
         # Start the game
         self.reset()
@@ -281,12 +280,14 @@ class PlasmaPongEnv(gym.Env):
         
         # Get ball and paddle positions
         ball_x = self.driver.execute_script("return pong.ball.x;")
+        ball_y = self.driver.execute_script("return pong.ball.y;")
+        paddle_center_y = self.driver.execute_script("return pong.player.y;")
+        
         # player_x = self.driver.execute_script("return pong.player.x;")
-        canvas_width = self.driver.execute_script("return document.getElementById('canvas').width;")
+        # canvas_width = self.driver.execute_script("return document.getElementById('canvas').width;")
         
-        
+        # Update the collision counter for the player
         new_player_collision_counter = self.driver.execute_script("return pong.player.collision_counter;")
-        new_ai_collision_counter = self.driver.execute_script("return pong.ai.collision_counter;")
         
         reward = 0
         
@@ -298,9 +299,13 @@ class PlasmaPongEnv(gym.Env):
         
         # 2. Reward based on ball proximity
         # Negative if ball is closer to player, positive if closer to enemy
-        ball_position_ratio = ball_x / canvas_width  # 0 (player side) to 1 (enemy side)
-        proximity_reward = (ball_position_ratio - 0.5) * 0.01  # Scale to small value
-        reward += proximity_reward
+        # ball_position_ratio = ball_x / canvas_width  # 0 (player side) to 1 (enemy side)
+        # proximity_reward = (ball_position_ratio - 0.5) * 0.01  # Scale to small value
+        # reward += proximity_reward
+        # Isn't necessary as this way sucking the ball as a technique would be penalized
+        # Let's use the y axis proximity instead.
+        distance = abs(ball_y - paddle_center_y)
+        reward -= 0.001 * distance
         
         # 3. Positive reward when player touches the ball
         if new_player_collision_counter > self.player_collision_counter:
