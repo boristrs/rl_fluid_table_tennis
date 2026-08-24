@@ -25,7 +25,7 @@ class PlasmaPongEnv(gym.Env):
         w (int): Width of the observation image (96 pixels).
         c (int): Color channels (3 for RGB).
         observation_space (Box): 96x96x3 RGB image space.
-        action_space (Discrete): 5 discrete actions (0: none, 1: up, 2: down, 3: push, 4: suck).
+        action_space (MultiDiscrete): Four binary actions in the order up, down, push, suck.
     """
 
     metadata = {"render_modes": ["rgb_array", "human"], "render_fps": 60}
@@ -49,24 +49,7 @@ class PlasmaPongEnv(gym.Env):
         self.observation_space = spaces.Box(
             low=0, high=255, shape=(96, 96, 3), dtype=np.uint8
         )
-        # self.action_space = spaces.MultiDiscrete([2, 2, 2, 2])  # up, down, push, suck
-        self.action_space = spaces.MultiDiscrete([3, 2, 2])
-
-        # ?Key mappings (based on typical Pong controls: W=up, S=down, A=suck, D=push)
-        self.action_keys = {
-            0: [], # nothing
-            1: [87],  # up
-            2: [83],  # down
-            3: [68],  # push plasma
-            4: [65],  # suck plasma
-        }
-        # self.action_keys = {
-        #     0: [],
-        #     1: ["w"],  # up
-        #     2: ["s"],  # down
-        #     3: ["d"],  # push plasma
-        #     4: ["a"],  # suck plasma
-        # }
+        self.action_space = spaces.MultiDiscrete([2, 2, 2, 2])  # up, down, push, suck
 
         # Set up headless Chrome
         chrome_options = Options()
@@ -145,12 +128,12 @@ class PlasmaPongEnv(gym.Env):
 
     def step(
         self,
-        action: int
+        action: np.ndarray
         ) -> Tuple[np.ndarray, float, bool, bool, Dict]:
         """Execute one step in the environment.
         
         Args:
-            action: An integer from the action space (0-4).
+            action: Four binary values in the order up, down, push, suck.
             
         Returns:
             A tuple containing:
@@ -168,16 +151,14 @@ class PlasmaPongEnv(gym.Env):
         #     68: Keys.RIGHT,   # D
         #     65: Keys.LEFT,    # A
         # }
-        # Map action indices to keycodes
+        # Map action components to keycodes: up, down, push, suck.
         action_map = {
-            0: 0,  # nothing placeholder value
-            1: 87,  # up (w)
-            2: 83,  # down (s)
-            3: 68,  # push (d)
-            4: 65,  # suck (a)
+            0: 87,  # up (w)
+            1: 83,  # down (s)
+            2: 68,  # push (d)
+            3: 65,  # suck (a)
         }
         keycode_to_char = {
-            0: '',     # nothing
             87: 'w',      # W
             83: 's',    # S
             68: 'd',   # D
@@ -316,10 +297,10 @@ class PlasmaPongEnv(gym.Env):
             reward += 0.1
             self.player_collision_counter = new_player_collision_counter  # Update counter
         
-        # 4. Penalty when ball touches opponent
-        if new_ai_collision_counter > self.ai_collision_counter:
-            # reward -= 0.05
-            self.ai_collision_counter = new_ai_collision_counter  # Update counter
+        # 4. No penalty when ball touches opponent
+        # if new_ai_collision_counter > self.ai_collision_counter:
+        #     # reward -= 0.05
+        #     self.ai_collision_counter = new_ai_collision_counter  # Update counter
         
         # Update previous lives
         self.prev_bot_life = bot_life
