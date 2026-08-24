@@ -244,7 +244,9 @@ function Pong(canvas) {
 			this.theta = ((this.player.y + this.player.height/2) - this.ball.y ) / ( this.player.height  /  2 );
 			this.ball.vx = this.ball.speed * Math.cos(this.theta);
 			this.ball.vy = -this.ball.speed * Math.sin(this.theta);
-
+			this.player.collision_counter = this.player.collision_counter + 1;
+			// if this.player.collision_counter < new_player_collision_counter:
+			// 	this.player.collision_counter = new_player_collision_counter;
 		}
 		
 		if ( ( Math.abs(this.ball.x - this.ai.x) < Math.abs( this.ball.vx ) && this.ai.y < this.ball.y + this.ai.height && this.ball.y < this.ai.y + this.ai.height ) ) {
@@ -252,6 +254,7 @@ function Pong(canvas) {
 			this.theta = ((this.ai.y + this.ai.height/2) - this.ball.y ) / ( this.ai.height  /  2 );
 			this.ball.vx = -this.ball.speed * Math.cos(this.theta);
 			this.ball.vy = -this.ball.speed * Math.sin(this.theta);
+			this.ai.collision_counter = this.ai.collision_counter + 1;
 		}
 
 		// y
@@ -454,6 +457,8 @@ function Pong(canvas) {
 		this.ball.x = this.ctx.canvas.width / 2;
 		this.ball.y = this.ctx.canvas.height / 2;
 		
+		this.ai.collision_counter = 0;
+		this.player.collision_counter = 0;
 	};
 
 	this.keyMap = {

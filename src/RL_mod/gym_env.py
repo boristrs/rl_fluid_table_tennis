@@ -93,6 +93,10 @@ class PlasmaPongEnv(gym.Env):
         self.prev_bot_life = 5
         self.prev_player_life = 5 # player (RL AI-agent)
 
+        # Collision counters for reward calculations
+        self.player_collision_counter = 0
+        self.ai_collision_counter = 0
+        
         # Start the game
         self.reset()
 
@@ -289,8 +293,9 @@ class PlasmaPongEnv(gym.Env):
         # player_x = self.driver.execute_script("return pong.player.x;")
         canvas_width = self.driver.execute_script("return document.getElementById('canvas').width;")
         
-        ball_touched_player = self.driver.execute_script("return pong.ball.last_touched_by === 'player';")
-        ball_touched_ai = self.driver.execute_script("return pong.ball.last_touched_by === 'ai';")
+        
+        new_player_collision_counter = self.driver.execute_script("return pong.player.collision_counter;")
+        new_ai_collision_counter = self.driver.execute_script("return pong.ai.collision_counter;")
         
         reward = 0
         
@@ -307,12 +312,14 @@ class PlasmaPongEnv(gym.Env):
         reward += proximity_reward
         
         # 3. Positive reward when player touches the ball
-        if ball_touched_player:
+        if new_player_collision_counter > self.player_collision_counter:
             reward += 0.1
+            self.player_collision_counter = new_player_collision_counter  # Update counter
         
         # 4. Penalty when ball touches opponent
-        if ball_touched_ai:
-            reward -= 0.05
+        if new_ai_collision_counter > self.ai_collision_counter:
+            # reward -= 0.05
+            self.ai_collision_counter = new_ai_collision_counter  # Update counter
         
         # Update previous lives
         self.prev_bot_life = bot_life
