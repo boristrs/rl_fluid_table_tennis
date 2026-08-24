@@ -43,6 +43,7 @@ class PlasmaPongEnv(gym.Env):
         """
         super().__init__()
         self.render_mode = render_mode
+        self.max_steps = max_steps
         self.h, self.w, self.c = 96, 96, 3
 
         # Observation space: 96x96x3 RGB pixels (downsampled from 96x96 canvas)
@@ -82,6 +83,9 @@ class PlasmaPongEnv(gym.Env):
         # Collision counters for reward calculations
         self.player_collision_counter = 0
         
+        # Step counter to limit episode length
+        self.step_counter = 0
+        
         # Start the game
         self.reset()
 
@@ -120,6 +124,9 @@ class PlasmaPongEnv(gym.Env):
         self.prev_bot_life = 5
         self.prev_player_life = 5
         self.player_collision_counter = 0
+        
+        # Reset step_counter
+        self.step_counter = 0 
 
         # Focus on canvas by clicking it
         # To ensure the keys send are effective in the game
@@ -230,9 +237,12 @@ class PlasmaPongEnv(gym.Env):
         # Get rewards and done
         reward, done = self._get_reward_done()
 
+        # Return this transition before the next episode is reset.
+        self.step_counter += 1
+
         # Info (empty for now)
         info = {}
-        truncated = False
+        truncated = self.step_counter >= self.max_steps and not done
 
         return obs, reward, done, truncated, info
 
