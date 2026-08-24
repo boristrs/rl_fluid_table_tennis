@@ -347,10 +347,7 @@ class PlasmaPongEnv(gym.Env):
             # Reuse your observation capture (e.g., JS canvas -> bytes -> np.array)
             # obs = self._eval("() => window._env_obs()")  # returns flattened
             # uint8
-            obs = self._get_obs()
-            frame = np.array(obs, dtype=np.uint8).reshape(
-                (self.h, self.w, self.c))
-            return frame
+            return np.asarray(self._get_obs(), dtype=np.uint8)
         elif mode == "human":
             # Gymnasium conventions for environments where rendering is handled externally
             return None
