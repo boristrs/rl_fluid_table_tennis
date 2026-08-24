@@ -119,6 +119,7 @@ class PlasmaPongEnv(gym.Env):
         # Reset previous lives
         self.prev_bot_life = 5
         self.prev_player_life = 5
+        self.player_collision_counter = 0
 
         # Focus on canvas by clicking it
         # To ensure the keys send are effective in the game
@@ -321,8 +322,13 @@ class PlasmaPongEnv(gym.Env):
         self.prev_bot_life = bot_life
         self.prev_player_life = player_life
         
-        # Done: When display is inactive (game over)
-        done = not display_active
+        # End the episode when either player has no lives left. The browser no
+        # longer restarts automatically, so this preserves the terminal score.
+        done = (
+            not display_active
+            or bot_life <= 0
+            or player_life <= 0
+        )
         
         return reward, done
 
