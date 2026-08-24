@@ -49,7 +49,10 @@ class PlasmaPongEnv(gym.Env):
         self.observation_space = spaces.Box(
             low=0, high=255, shape=(96, 96, 3), dtype=np.uint8
         )
-        self.action_space = spaces.MultiDiscrete([2, 2, 2, 2])  # up, down, push, suck
+        # self.action_space = spaces.MultiDiscrete([2, 2, 2, 2])  # up, down, push, suck
+        self.action_space = spaces.MultiDiscrete([3, 2, 2])
+        # [vertical, push, suck]
+        # vertical: 0 = none, 1 = up, 2 = down
 
         # Set up headless Chrome
         chrome_options = Options()
@@ -164,13 +167,20 @@ class PlasmaPongEnv(gym.Env):
             68: 'd',   # D
             65: 'a',    # A
         }
-            
-        # Send action keys
+                    
+        vertical, push, suck = map(int, action)
         keys_to_send = []
-        for i, is_active in enumerate(action):
-            if is_active == 1:
-                keys_to_send.append(action_map[i])
-        # print(f"Keys to send: {keys_to_send}")
+
+        if vertical == 1:
+            keys_to_send.append(87)  # W / up
+        elif vertical == 2:
+            keys_to_send.append(83)  # S / down
+
+        if push == 1:
+            keys_to_send.append(68)  # D / push
+
+        if suck == 1:
+            keys_to_send.append(65)  # A / suck
     
         self.driver.find_element(value="canvas")
         # canvas.click()
