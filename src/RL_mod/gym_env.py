@@ -190,8 +190,7 @@ class PlasmaPongEnv(gym.Env):
         # Return this transition before the next episode is reset.
         self.step_counter += 1
 
-        # Info (empty for now)
-        info = {}
+        info = self._get_metrics()
         truncated = self.step_counter >= self.max_steps and not done
 
         return obs, reward, done, truncated, info
@@ -276,6 +275,16 @@ class PlasmaPongEnv(gym.Env):
         # interpolation=cv2.INTER_LINEAR
 
         return img_array
+
+    def _get_metrics(self) -> dict[str, int]:
+        """Return gameplay metrics for policy evaluation."""
+        return {
+            "player_life": int(self.driver.execute_script("return pong.player.life;")),
+            "opponent_life": int(self.driver.execute_script("return pong.ai.life;")),
+            "player_collisions": int(
+                self.driver.execute_script("return pong.player.collision_counter;")
+            ),
+        }
 
     def _get_state_obs(self) -> np.ndarray:
         """Read the compact game state used by the MLP diagnostic policy."""
