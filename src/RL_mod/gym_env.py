@@ -1,7 +1,9 @@
 """
-RL_mod.gym_env provides a Gym environment wrapper for the Plasma Pong game using Selenium to interact with the browser-based game.
+RL_mod.gym_env provides a Gym environment wrapper for the Plasma Pong game
+using Selenium to interact with the browser-based game.
 """
 
+from typing import Any
 import io
 import base64
 import time
@@ -11,7 +13,6 @@ import numpy as np
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from PIL import Image
-from typing import Tuple, Dict
 
 
 class PlasmaPongEnv(gym.Env):
@@ -95,9 +96,10 @@ class PlasmaPongEnv(gym.Env):
 
     def reset(
         self,
+        *,
         seed: int | None = None,
-        options: dict | None = None
-    ) -> Tuple[np.ndarray, Dict]:
+        options: dict[str, Any] | None = None
+    ) -> tuple[np.ndarray, dict[str, Any]]:
         """Reset the environment to initial state.
 
         Args:
@@ -109,6 +111,8 @@ class PlasmaPongEnv(gym.Env):
                 - observation: The initial game state as a 96x96x3 RGB image.
                 - info: Additional information (empty dict).
         """
+        super().reset(seed=seed)
+
         # Load the game
         self.driver.get(self.html_path)
         time.sleep(2)  # Wait for the page to load
@@ -143,7 +147,7 @@ class PlasmaPongEnv(gym.Env):
     def step(
         self,
         action: np.ndarray
-    ) -> Tuple[np.ndarray, float, bool, bool, Dict]:
+    ) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
         """Execute one step in the environment.
 
         Args:
@@ -158,77 +162,10 @@ class PlasmaPongEnv(gym.Env):
                 - info: Additional information (empty dict).
         """
 
-        # Convert keycodes to key characters
-        # keycode_to_char = {
-        #     87: Keys.UP,      # W
-        #     83: Keys.DOWN,    # S
-        #     68: Keys.RIGHT,   # D
-        #     65: Keys.LEFT,    # A
-        # }
-        keycode_to_char = {
-            87: 'w',      # W
-            83: 's',    # S
-            68: 'd',   # D
-            65: 'a',    # A
-        }
-
-        vertical, push, suck = map(int, action)
-        keys_to_send = []
-
-        if vertical == 1:
-            keys_to_send.append(87)  # W / up
-        elif vertical == 2:
-            keys_to_send.append(83)  # S / down
-
-        if push == 1:
-            keys_to_send.append(68)  # D / push
-
-        if suck == 1:
-            keys_to_send.append(65)  # A / suck
-
-        requested_keycodes = set(keys_to_send)
-        keys_to_release = self.held_keycodes - requested_keycodes
-        keys_to_press = requested_keycodes - self.held_keycodes
-
-        # Update only keys that changed since the previous action.
-        for keyCode in keys_to_release:
-            if keyCode in keycode_to_char:
-                char = keycode_to_char[keyCode]
-                self.driver.execute_script(f"""
-                var event = new KeyboardEvent('keyup', {{
-                    key: '{char}',
-                    code: 'Key{char.upper()}',
-                    keyCode: {keyCode},
-                    which: {keyCode},
-                    bubbles: true,
-                    cancelable: true
-                }});
-                window.dispatchEvent(event);
-            """)
-
-        for keyCode in keys_to_press:
-            if keyCode in keycode_to_char:
-                char = keycode_to_char[keyCode]
-                self.driver.execute_script(f"""
-                var event = new KeyboardEvent('keydown', {{
-                    key: '{char}',
-                    code: 'Key{char.upper()}',
-                    keyCode: {keyCode},
-                    which: {keyCode},
-                    bubbles: true,
-                    cancelable: true
-                }});
-                window.dispatchEvent(event);
-            """)
-
-        self.held_keycodes = requested_keycodes
+        self._update_held_keys(self._action_keycodes(action))
 
         # # Wait for frame to update (if 60 FPS, ~16ms per frame)
         time.sleep(0.08)
-
-        # for keyCode in keys_to_send:
-        #     if keyCode in keycode_to_char:
-        #         canvas.send_keys(keycode_to_char[keyCode])
 
         # Get Observation
         obs = self._get_obs()
@@ -244,6 +181,55 @@ class PlasmaPongEnv(gym.Env):
         truncated = self.step_counter >= self.max_steps and not done
 
         return obs, reward, done, truncated, info
+
+    def _action_keycodes(self, action: np.ndarray) -> set[int]:
+        """Convert [vertical, push, suck] into the requested key codes."""
+        vertical, push, suck = map(int, action)
+        keycodes = set()
+
+        if vertical == 1:
+            keycodes.add(87)  # W / up
+        elif vertical == 2:
+            keycodes.add(83)  # S / down
+        if push == 1:
+            keycodes.add(68)  # D / push
+        if suck == 1:
+            keycodes.add(65)  # A / suck
+
+        return keycodes
+
+    def _update_held_keys(self, requested_keycodes: set[int]) -> None:
+        """Send only key transitions needed for the new action."""
+        keycode_to_char = {87: 'w', 83: 's', 68: 'd', 65: 'a'}
+        keys_to_release = self.held_keycodes - requested_keycodes
+        keys_to_press = requested_keycodes - self.held_keycodes
+
+        for key_code in keys_to_release:
+            self._send_key_event(key_code, 'keyup', keycode_to_char)
+        for key_code in keys_to_press:
+            self._send_key_event(key_code, 'keydown', keycode_to_char)
+
+        self.held_keycodes = requested_keycodes
+
+    def _send_key_event(
+        self,
+        key_code: int,
+        event_type: str,
+        keycode_to_char: dict[int, str]
+    ) -> None:
+        """Send a keyboard transition to the browser game."""
+        char = keycode_to_char[key_code]
+        self.driver.execute_script(f"""
+            var event = new KeyboardEvent('{event_type}', {{
+                key: '{char}',
+                code: 'Key{char.upper()}',
+                keyCode: {key_code},
+                which: {key_code},
+                bubbles: true,
+                cancelable: true
+            }});
+            window.dispatchEvent(event);
+        """)
 
     def _get_obs(
         self
@@ -276,7 +262,7 @@ class PlasmaPongEnv(gym.Env):
 
     def _get_reward_done(
         self
-    ) -> Tuple[float, bool]:
+    ) -> tuple[float, bool]:
         """Calculate reward and check if the episode is done.
 
         Returns:
@@ -293,9 +279,6 @@ class PlasmaPongEnv(gym.Env):
         # ball_x = self.driver.execute_script("return pong.ball.x;")
         ball_y = self.driver.execute_script("return pong.ball.y;")
         paddle_center_y = self.driver.execute_script("return pong.player.y;")
-
-        # player_x = self.driver.execute_script("return pong.player.x;")
-        # canvas_width = self.driver.execute_script("return document.getElementById('canvas').width;")
 
         # Update the collision counter for the player
         new_player_collision_counter = self.driver.execute_script(
@@ -365,10 +348,12 @@ class PlasmaPongEnv(gym.Env):
             # obs = self._eval("() => window._env_obs()")  # returns flattened
             # uint8
             obs = self._get_obs()
-            frame = np.array(obs, dtype=np.uint8).reshape(self.h, self.w, 3)
+            frame = np.array(obs, dtype=np.uint8).reshape(
+                (self.h, self.w, self.c))
             return frame
         elif mode == "human":
-            return None  # Gymnasium conventions for environments where rendering is handled externally
+            # Gymnasium conventions for environments where rendering is handled externally
+            return None
         else:
             raise NotImplementedError(f"Unsupported render mode: {mode}")
 
