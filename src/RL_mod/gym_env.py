@@ -25,7 +25,7 @@ class PlasmaPongEnv(gym.Env):
         w (int): Width of the observation image (96 pixels).
         c (int): Color channels (3 for RGB).
         observation_space (Box): 96x96x3 RGB image space.
-        action_space (MultiDiscrete): Four binary actions in the order up, down, push, suck.
+        action_space (MultiDiscrete): [vertical, push, suck], with vertical 0=none, 1=up, 2=down.
     """
 
     metadata = {"render_modes": ["rgb_array", "human"], "render_fps": 60}
@@ -85,6 +85,7 @@ class PlasmaPongEnv(gym.Env):
         
         # Step counter to limit episode length
         self.step_counter = 0
+        self.held_keycodes: set[int] = set()
         
         # Start the game
         self.reset()
@@ -126,7 +127,8 @@ class PlasmaPongEnv(gym.Env):
         self.player_collision_counter = 0
         
         # Reset step_counter
-        self.step_counter = 0 
+        self.step_counter = 0
+        self.held_keycodes.clear()
 
         # Focus on canvas by clicking it
         # To ensure the keys send are effective in the game
@@ -143,7 +145,7 @@ class PlasmaPongEnv(gym.Env):
         """Execute one step in the environment.
         
         Args:
-            action: Four binary values in the order up, down, push, suck.
+            action: [vertical, push, suck], with vertical 0=none, 1=up, 2=down.
             
         Returns:
             A tuple containing:
@@ -161,13 +163,6 @@ class PlasmaPongEnv(gym.Env):
         #     68: Keys.RIGHT,   # D
         #     65: Keys.LEFT,    # A
         # }
-        # Map action components to keycodes: up, down, push, suck.
-        action_map = {
-            0: 87,  # up (w)
-            1: 83,  # down (s)
-            2: 68,  # push (d)
-            3: 65,  # suck (a)
-        }
         keycode_to_char = {
             87: 'w',      # W
             83: 's',    # S
@@ -189,11 +184,27 @@ class PlasmaPongEnv(gym.Env):
         if suck == 1:
             keys_to_send.append(65)  # A / suck
     
-        self.driver.find_element(value="canvas")
-        # canvas.click()
-        
-        # Press down keys
-        for keyCode in keys_to_send:
+        requested_keycodes = set(keys_to_send)
+        keys_to_release = self.held_keycodes - requested_keycodes
+        keys_to_press = requested_keycodes - self.held_keycodes
+
+        # Update only keys that changed since the previous action.
+        for keyCode in keys_to_release:
+            if keyCode in keycode_to_char:
+                char = keycode_to_char[keyCode]
+                self.driver.execute_script(f"""
+                var event = new KeyboardEvent('keyup', {{
+                    key: '{char}',
+                    code: 'Key{char.upper()}',
+                    keyCode: {keyCode},
+                    which: {keyCode},
+                    bubbles: true,
+                    cancelable: true
+                }});
+                window.dispatchEvent(event);
+            """)
+
+        for keyCode in keys_to_press:
             if keyCode in keycode_to_char:
                 char = keycode_to_char[keyCode]
                 self.driver.execute_script(f"""
@@ -207,25 +218,11 @@ class PlasmaPongEnv(gym.Env):
                 }});
                 window.dispatchEvent(event);
             """)
+
+        self.held_keycodes = requested_keycodes
                 
         # # Wait for frame to update (if 60 FPS, ~16ms per frame)
         time.sleep(0.08)
-        
-        # Release keys
-        for keyCode in keys_to_send:
-            if keyCode in keycode_to_char:
-                char = keycode_to_char[keyCode]
-                self.driver.execute_script(f"""
-                    var event = new KeyboardEvent('keyup', {{
-                        key: '{char}',
-                        code: 'Key{char.upper()}',
-                        keyCode: {keyCode},
-                        which: {keyCode},
-                        bubbles: true,
-                        cancelable: true
-                    }});
-                    window.dispatchEvent(event);
-                """)
         
         # for keyCode in keys_to_send:
         #     if keyCode in keycode_to_char:
@@ -290,7 +287,7 @@ class PlasmaPongEnv(gym.Env):
         display_active = self.driver.execute_script("return pong.display;")
         
         # Get ball and paddle positions
-        ball_x = self.driver.execute_script("return pong.ball.x;")
+        # ball_x = self.driver.execute_script("return pong.ball.x;")
         ball_y = self.driver.execute_script("return pong.ball.y;")
         paddle_center_y = self.driver.execute_script("return pong.player.y;")
         
