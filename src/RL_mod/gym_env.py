@@ -101,8 +101,8 @@ class PlasmaPongEnv(gym.Env):
         # Collision counters for reward calculations
         self.player_collision_counter = 0
 
-        # Radius of the paddle for proximity reward calculation
-        self.r_paddle = self.driver.execute_script("return pong.player.height;") / 2
+        # Set after the game page has loaded in reset().
+        self.r_paddle = 0
         
         # Step counter to limit episode length
         self.step_counter = 0
@@ -132,7 +132,11 @@ class PlasmaPongEnv(gym.Env):
 
         # Load the game
         self.driver.get(self.html_path)
-        time.sleep(2)  # Wait for the page to load
+        while not self.driver.execute_script("return typeof pong !== 'undefined';"):
+            time.sleep(0.1)
+
+        self.r_paddle = self.driver.execute_script(
+            "return pong.player.height;") / 2
 
         # Ensure single-player mode (AI vs human)
         self.driver.execute_script("pong.ai.multiplayer = false;")
