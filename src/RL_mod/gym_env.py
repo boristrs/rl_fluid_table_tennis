@@ -336,7 +336,7 @@ class PlasmaPongEnv(gym.Env):
         # Isn't necessary as this way sucking the ball as a technique would be penalized
         # Let's use the y axis proximity instead.
         distance = abs(ball_y - paddle_center_y)
-        reward -= 0.001 * distance
+        reward -= 0.0001 * distance
 
         # 3. Positive reward when player touches the ball
         if new_player_collision_counter > self.player_collision_counter:
