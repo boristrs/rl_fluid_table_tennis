@@ -9,7 +9,7 @@ except ImportError:
 
 env = PlasmaPongEnv(render_mode="human", observation_mode="state")
 model = PPO("MlpPolicy", env, verbose=1)
-model.learn(total_timesteps=100000)
+model.learn(total_timesteps=10000)
 model.save("ppo_plasma_pong_state")
 # Keeps the script alive until you press Enter
 input("Press Enter to close...")
